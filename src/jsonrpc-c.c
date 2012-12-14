@@ -54,10 +54,8 @@ static int send_result(struct jrpc_connection * conn, cJSON * result,
 		cJSON * id) {
 	int return_value = 0;
 	cJSON *result_root = cJSON_CreateObject();
-	if(result)
-	cJSON_AddItemToObject(result_root, "result", result);
-//	else
-//		cJSON_AddItemToObject(result_root, "result", cJSON
+	if (result)
+		cJSON_AddItemToObject(result_root, "result", result);
 	cJSON_AddItemToObject(result_root, "id", id);
 
 	char * str_result = cJSON_Print(result_root);
@@ -99,14 +97,14 @@ static int eval_request(struct jrpc_server *server,
 	method = cJSON_GetObjectItem(root, "method");
 	if (method != NULL && method->type == cJSON_String) {
 		params = cJSON_GetObjectItem(root, "params");
-		if (params == NULL || params->type == cJSON_Array
-				|| params->type == cJSON_Object) {
+		if (params == NULL|| params->type == cJSON_Array
+		|| params->type == cJSON_Object) {
 			id = cJSON_GetObjectItem(root, "id");
-			if (id == NULL || id->type == cJSON_String
-					|| id->type == cJSON_Number) {
-				//We have to copy ID because using it on the reply and deleting the response Object will also delete ID
+			if (id == NULL|| id->type == cJSON_String
+			|| id->type == cJSON_Number) {
+			//We have to copy ID because using it on the reply and deleting the response Object will also delete ID
 				cJSON * id_copy = NULL;
-				if (id != NULL )
+				if (id != NULL)
 					id_copy =
 							(id->type == cJSON_String) ? cJSON_CreateString(
 									id->valuestring) :
@@ -119,7 +117,7 @@ static int eval_request(struct jrpc_server *server,
 		}
 	}
 	send_error(conn, JRPC_INVALID_REQUEST,
-			"The JSON sent is not a valid Request object.", NULL );
+			"The JSON sent is not a valid Request object.", NULL);
 	return -1;
 }
 
@@ -139,12 +137,12 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	int fd = conn->fd;
 	if (conn->pos == (conn->buffer_size - 1)) {
 		char * new_buffer = realloc(conn->buffer, conn->buffer_size *= 2);
-		if (new_buffer == NULL ) {
+		if (new_buffer == NULL) {
 			perror("Memory error");
 			return close_connection(loop, w);
 		}
 		conn->buffer = new_buffer;
-		memset(conn->buffer+conn->pos, 0, conn->buffer_size-conn->pos);
+		memset(conn->buffer + conn->pos, 0, conn->buffer_size - conn->pos);
 	}
 	// can not fill the entire buffer, string must be NULL terminated
 	int max_read_size = conn->buffer_size - conn->pos - 1;
@@ -162,7 +160,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		char *end_ptr;
 		conn->pos += bytes_read;
 
-		if ((root = cJSON_Parse_Stream(conn->buffer, &end_ptr)) != NULL ) {
+		if ((root = cJSON_Parse_Stream(conn->buffer, &end_ptr)) != NULL) {
 			if (server->debug_level > 1) {
 				char * str_result = cJSON_Print(root);
 				printf("Valid JSON Received:\n%s\n", str_result);
@@ -173,10 +171,11 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 				eval_request(server, conn, root);
 			}
 			//shift processed request, discarding it
-			memmove(conn->buffer, end_ptr, strlen(end_ptr) +2);
+			memmove(conn->buffer, end_ptr, strlen(end_ptr) + 2);
 
 			conn->pos = strlen(end_ptr);
-			memset(conn->buffer+conn->pos, 0, conn->buffer_size-conn->pos - 1);
+			memset(conn->buffer + conn->pos, 0,
+					conn->buffer_size - conn->pos - 1);
 
 			cJSON_Delete(root);
 		} else {
@@ -189,7 +188,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 				}
 				send_error(conn, JRPC_PARSE_ERROR,
 						"Parse error. Invalid JSON was received by the server.",
-						NULL );
+						NULL);
 				return close_connection(loop, w);
 			}
 		}
@@ -252,7 +251,7 @@ int jrpc_server_start(struct jrpc_server *server) {
 	}
 
 // loop through all the results and bind to the first we can
-	for (p = servinfo; p != NULL ; p = p->ai_next) {
+	for (p = servinfo; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol))
 				== -1) {
 			perror("server: socket");
@@ -274,7 +273,7 @@ int jrpc_server_start(struct jrpc_server *server) {
 		break;
 	}
 
-	if (p == NULL ) {
+	if (p == NULL) {
 		fprintf(stderr, "server: failed to bind\n");
 		return 2;
 	}
@@ -311,7 +310,7 @@ int jrpc_register_procedure(struct jrpc_server *server,
 		server->procedures = ptr;
 
 	}
-	if ((server->procedures[i].name = strdup(name)) == NULL )
+	if ((server->procedures[i].name = strdup(name)) == NULL)
 		return -1;
 	server->procedures[i].function = function_pointer;
 	server->procedures[i].data = data;
