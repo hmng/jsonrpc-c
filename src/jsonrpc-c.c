@@ -82,7 +82,8 @@ static int invoke_procedure(struct jrpc_server *server,
 		}
 	}
 	if (!procedure_found)
-		return send_error(conn, JRPC_METHOD_NOT_FOUND, "Method not found.", id);
+		return send_error(conn, JRPC_METHOD_NOT_FOUND,
+				strdup("Method not found."), id);
 	else {
 		if (ctx.error_code)
 			return send_error(conn, ctx.error_code, ctx.error_message, id);
@@ -117,7 +118,7 @@ static int eval_request(struct jrpc_server *server,
 		}
 	}
 	send_error(conn, JRPC_INVALID_REQUEST,
-			"The JSON sent is not a valid Request object.", NULL);
+			strdup("The JSON sent is not a valid Request object."), NULL);
 	return -1;
 }
 
@@ -187,7 +188,8 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 							conn->buffer);
 				}
 				send_error(conn, JRPC_PARSE_ERROR,
-						"Parse error. Invalid JSON was received by the server.",
+						strdup(
+								"Parse error. Invalid JSON was received by the server."),
 						NULL);
 				return close_connection(loop, w);
 			}
