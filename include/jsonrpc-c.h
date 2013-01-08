@@ -60,6 +60,7 @@ struct jrpc_connection {
 	int pos;
 	unsigned int buffer_size;
 	char * buffer;
+	int debug_level;
 };
 
 int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,

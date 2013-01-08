@@ -28,6 +28,8 @@ static void *get_in_addr(struct sockaddr *sa) {
 
 static int send_response(struct jrpc_connection * conn, char *response) {
 	int fd = conn->fd;
+	if (conn->debug_level > 1)
+		printf("JSON Response:\n%s\n", response);
 	write(fd, response, strlen(response));
 	write(fd, "\n", 1);
 	return 0;
@@ -110,7 +112,7 @@ static int eval_request(struct jrpc_server *server,
 							(id->type == cJSON_String) ? cJSON_CreateString(
 									id->valuestring) :
 									cJSON_CreateNumber(id->valueint);
-				if (!server->debug_level)
+				if (server->debug_level)
 					printf("Method Invoked: %s\n", method->valuestring);
 				return invoke_procedure(server, conn, method->valuestring,
 						params, id_copy);
@@ -154,7 +156,8 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	}
 	if (!bytes_read) {
 		// client closed the sending half of the connection
-		printf("Client closed connection?\n");
+		if (server->debug_level)
+			printf("Client closed connection.\n");
 		return close_connection(loop, w);
 	} else {
 		cJSON *root;
@@ -183,7 +186,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 			// did we parse the all buffer? If so, just wait for more.
 			// else there was an error before the buffer's end
 			if (cJSON_GetErrorPtr() != (conn->buffer + conn->pos)) {
-				if (server->debug_level > 1) {
+				if (server->debug_level) {
 					printf("INVALID JSON Received:\n---\n%s\n---\n",
 							conn->buffer);
 				}
@@ -211,9 +214,11 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		perror("accept");
 		free(connection_watcher);
 	} else {
-		inet_ntop(their_addr.ss_family,
-				get_in_addr((struct sockaddr *) &their_addr), s, sizeof s);
-		printf("server: got connection from %s\n", s);
+		if (((struct jrpc_server *) w->data)->debug_level) {
+			inet_ntop(their_addr.ss_family,
+					get_in_addr((struct sockaddr *) &their_addr), s, sizeof s);
+			printf("server: got connection from %s\n", s);
+		}
 		ev_io_init(&connection_watcher->io, connection_cb,
 				connection_watcher->fd, EV_READ);
 		//copy pointer to struct jrpc_server
@@ -222,6 +227,9 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		connection_watcher->buffer = malloc(1500);
 		memset(connection_watcher->buffer, 0, 1500);
 		connection_watcher->pos = 0;
+		//copy debug_level, struct jrpc_connection has no pointer to struct jrpc_server
+		connection_watcher->debug_level =
+				((struct jrpc_server *) w->data)->debug_level;
 		ev_io_start(loop, &connection_watcher->io);
 	}
 }
@@ -231,7 +239,13 @@ int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,
 	memset(server, 0, sizeof(struct jrpc_server));
 	server->loop = loop;
 	server->port_number = port_number;
-	server->debug_level = 2;
+	char * debug_level_env = getenv("JRPC_DEBUG");
+	if (debug_level_env == NULL)
+		server->debug_level = 0;
+	else {
+		server->debug_level = strtol(debug_level_env, NULL, 10);
+		printf("JSONRPC-C Debug level %d\n", server->debug_level);
+	}
 	return 0;
 }
 
@@ -286,8 +300,8 @@ int jrpc_server_start(struct jrpc_server *server) {
 		perror("listen");
 		exit(1);
 	}
-
-	printf("server: waiting for connections...\n");
+	if (server->debug_level)
+		printf("server: waiting for connections...\n");
 
 	ev_io_init(&server->listen_watcher, accept_cb, sockfd, EV_READ);
 	server->listen_watcher.data = server;
