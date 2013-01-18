@@ -70,6 +70,10 @@ int jrpc_server_start(struct jrpc_server *server);
 
 int jrpc_server_stop(struct jrpc_server *server);
 
+void jrpc_server_destroy(struct jrpc_server *server);
+
+void jrpc_procedure_destroy(struct jrpc_procedure *procedure);
+
 int jrpc_register_procedure(struct jrpc_server *server,
 		jrpc_function function_pointer, char *name, void *data);
 

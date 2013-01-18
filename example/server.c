@@ -41,5 +41,6 @@ int main(void) {
 	jrpc_register_procedure(&my_server, say_hello, "sayHello", NULL );
 	jrpc_register_procedure(&my_server, exit_server, "exit", NULL );
 	ev_run(loop, 0);
+	jrpc_server_destroy(&my_server);
 	return 0;
 }

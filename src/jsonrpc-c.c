@@ -313,6 +313,26 @@ int jrpc_server_stop(struct jrpc_server *server) {
 	return 0;
 }
 
+void jrpc_server_destroy(struct jrpc_server *server){
+	/* Don't destroy server */
+	int i;
+	for (i = 0; i < server->procedure_count; i++){
+		jrpc_procedure_destroy( &(server->procedures[i]) );
+	}
+	free(server->procedures);
+}
+
+void jrpc_procedure_destroy(struct jrpc_procedure *procedure){
+	if (procedure->name){
+		free(procedure->name);
+		procedure->name = NULL;
+	}
+	if (procedure->data){
+		free(procedure->data);
+		procedure->data = NULL;
+	}
+}
+
 int jrpc_register_procedure(struct jrpc_server *server,
 		jrpc_function function_pointer, char *name, void * data) {
 	int i = server->procedure_count++;
