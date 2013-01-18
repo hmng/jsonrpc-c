@@ -334,5 +334,35 @@ int jrpc_register_procedure(struct jrpc_server *server,
 }
 
 int jrpc_deregister_procedure(struct jrpc_server *server, char *name) {
+	/* Search the procedure to deregister */
+	int i;
+	int found = 0;
+	if (server->procedures){
+		for (i = 0; i < server->procedure_count; i++){
+			if (found)
+				server->procedures[i-1] = server->procedures[i];
+			else if(!strcmp(name, server->procedures[i].name)){
+				found = 1;
+				jrpc_procedure_destroy( &(server->procedures[i]) );
+			}
+		}
+		if (found){
+			server->procedure_count--;
+			if (server->procedure_count){
+				struct jrpc_procedure * ptr = realloc(server->procedures,
+					sizeof(struct jrpc_procedure) * server->procedure_count);
+				if (!ptr){
+					perror("realloc");
+					return -1;
+				}
+				server->procedures = ptr;
+			}else{
+				server->procedures = NULL;
+			}
+		}
+	} else {
+		fprintf(stderr, "server : procedure '%s' not found\n", name);
+		return -1;
+	}
 	return 0;
 }
