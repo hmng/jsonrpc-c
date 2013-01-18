@@ -18,6 +18,8 @@
 
 #include "jsonrpc-c.h"
 
+struct ev_loop *loop;
+
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET) {
@@ -234,8 +236,8 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	}
 }
 
-int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,
-		int port_number) {
+int jrpc_server_init(struct jrpc_server *server, int port_number) {
+    loop = EV_DEFAULT;
 	memset(server, 0, sizeof(struct jrpc_server));
 	server->loop = loop;
 	server->port_number = port_number;
@@ -309,7 +311,12 @@ int jrpc_server_start(struct jrpc_server *server) {
 	return 0;
 }
 
+void jrpc_server_run(struct jrpc_server *server){
+	ev_run(server->loop, 0);
+}
+
 int jrpc_server_stop(struct jrpc_server *server) {
+	ev_break(server->loop, EVBREAK_ALL);
 	return 0;
 }
 

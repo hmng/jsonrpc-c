@@ -63,10 +63,11 @@ struct jrpc_connection {
 	int debug_level;
 };
 
-int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,
-		int port_number);
+int jrpc_server_init(struct jrpc_server *server, int port_number);
 
 int jrpc_server_start(struct jrpc_server *server);
+
+void jrpc_server_run(struct jrpc_server *server);
 
 int jrpc_server_stop(struct jrpc_server *server);
 
