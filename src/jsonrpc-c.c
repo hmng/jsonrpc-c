@@ -238,6 +238,11 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 
 int jrpc_server_init(struct jrpc_server *server, int port_number) {
     loop = EV_DEFAULT;
+    return jrpc_server_init_with_ev_loop(server, port_number, loop);
+}
+
+int jrpc_server_init_with_ev_loop(struct jrpc_server *server, 
+        int port_number, struct ev_loop *loop) {
 	memset(server, 0, sizeof(struct jrpc_server));
 	server->loop = loop;
 	server->port_number = port_number;
@@ -248,10 +253,10 @@ int jrpc_server_init(struct jrpc_server *server, int port_number) {
 		server->debug_level = strtol(debug_level_env, NULL, 10);
 		printf("JSONRPC-C Debug level %d\n", server->debug_level);
 	}
-	return 0;
+	return __jrpc_server_start(server);
 }
 
-int jrpc_server_start(struct jrpc_server *server) {
+static int __jrpc_server_start(struct jrpc_server *server) {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	int yes = 1;
@@ -329,7 +334,7 @@ void jrpc_server_destroy(struct jrpc_server *server){
 	free(server->procedures);
 }
 
-void jrpc_procedure_destroy(struct jrpc_procedure *procedure){
+static void jrpc_procedure_destroy(struct jrpc_procedure *procedure){
 	if (procedure->name){
 		free(procedure->name);
 		procedure->name = NULL;
