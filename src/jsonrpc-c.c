@@ -18,6 +18,8 @@
 
 #include "jsonrpc-c.h"
 
+struct ev_loop *loop;
+
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET) {
@@ -234,8 +236,13 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	}
 }
 
-int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,
-		int port_number) {
+int jrpc_server_init(struct jrpc_server *server, int port_number) {
+    loop = EV_DEFAULT;
+    return jrpc_server_init_with_ev_loop(server, port_number, loop);
+}
+
+int jrpc_server_init_with_ev_loop(struct jrpc_server *server, 
+        int port_number, struct ev_loop *loop) {
 	memset(server, 0, sizeof(struct jrpc_server));
 	server->loop = loop;
 	server->port_number = port_number;
@@ -246,10 +253,10 @@ int jrpc_server_init(struct jrpc_server *server, struct ev_loop *loop,
 		server->debug_level = strtol(debug_level_env, NULL, 10);
 		printf("JSONRPC-C Debug level %d\n", server->debug_level);
 	}
-	return 0;
+	return __jrpc_server_start(server);
 }
 
-int jrpc_server_start(struct jrpc_server *server) {
+static int __jrpc_server_start(struct jrpc_server *server) {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	int yes = 1;
@@ -309,8 +316,33 @@ int jrpc_server_start(struct jrpc_server *server) {
 	return 0;
 }
 
+void jrpc_server_run(struct jrpc_server *server){
+	ev_run(server->loop, 0);
+}
+
 int jrpc_server_stop(struct jrpc_server *server) {
+	ev_break(server->loop, EVBREAK_ALL);
 	return 0;
+}
+
+void jrpc_server_destroy(struct jrpc_server *server){
+	/* Don't destroy server */
+	int i;
+	for (i = 0; i < server->procedure_count; i++){
+		jrpc_procedure_destroy( &(server->procedures[i]) );
+	}
+	free(server->procedures);
+}
+
+static void jrpc_procedure_destroy(struct jrpc_procedure *procedure){
+	if (procedure->name){
+		free(procedure->name);
+		procedure->name = NULL;
+	}
+	if (procedure->data){
+		free(procedure->data);
+		procedure->data = NULL;
+	}
 }
 
 int jrpc_register_procedure(struct jrpc_server *server,
@@ -334,5 +366,35 @@ int jrpc_register_procedure(struct jrpc_server *server,
 }
 
 int jrpc_deregister_procedure(struct jrpc_server *server, char *name) {
+	/* Search the procedure to deregister */
+	int i;
+	int found = 0;
+	if (server->procedures){
+		for (i = 0; i < server->procedure_count; i++){
+			if (found)
+				server->procedures[i-1] = server->procedures[i];
+			else if(!strcmp(name, server->procedures[i].name)){
+				found = 1;
+				jrpc_procedure_destroy( &(server->procedures[i]) );
+			}
+		}
+		if (found){
+			server->procedure_count--;
+			if (server->procedure_count){
+				struct jrpc_procedure * ptr = realloc(server->procedures,
+					sizeof(struct jrpc_procedure) * server->procedure_count);
+				if (!ptr){
+					perror("realloc");
+					return -1;
+				}
+				server->procedures = ptr;
+			}else{
+				server->procedures = NULL;
+			}
+		}
+	} else {
+		fprintf(stderr, "server : procedure '%s' not found\n", name);
+		return -1;
+	}
 	return 0;
 }
