@@ -69,9 +69,7 @@ void add_signal(struct jrpc_server *server, int signo,
 int jrpc_server_init(struct jrpc_server *server, int port_number);
 
 int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
-        int port_number, struct ev_loop *loop);
-
-static int __jrpc_server_start(struct jrpc_server *server);
+		int port_number, struct ev_loop *loop);
 
 void jrpc_server_run(struct jrpc_server *server);
 
