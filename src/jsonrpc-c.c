@@ -19,6 +19,12 @@
 #include "jsonrpc-c.h"
 
 struct ev_loop *loop;
+void add_signal(struct jrpc_server *server, int signo,
+		struct sigaction *action) {
+	ev_signal *s = malloc(sizeof(*s));
+	ev_signal_init(s, action->sa_handler, signo);
+	ev_signal_start(server->loop, s);
+}
 
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa) {

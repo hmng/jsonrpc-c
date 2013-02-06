@@ -23,6 +23,10 @@
 
 struct jrpc_server my_server;
 
+void handle_kill_signal() {
+	jrpc_server_stop(&my_server);
+}
+
 cJSON * say_hello(jrpc_context * ctx, cJSON * params, cJSON *id) {
 	return cJSON_CreateString("Hello!");
 }
@@ -33,9 +37,18 @@ cJSON * exit_server(jrpc_context * ctx, cJSON * params, cJSON *id) {
 }
 
 int main(void) {
+	struct sigaction action;
+
 	jrpc_server_init(&my_server, PORT);
 	jrpc_register_procedure(&my_server, say_hello, "sayHello", NULL );
 	jrpc_register_procedure(&my_server, exit_server, "exit", NULL );
+
+	// Add signal handler to terminate server
+	action.sa_handler = handle_kill_signal;
+	add_signal(&my_server, SIGINT, &action);
+	add_signal(&my_server, SIGTERM, &action);
+	add_signal(&my_server, SIGHUP, &action);
+
 	jrpc_server_run(&my_server);
 	jrpc_server_destroy(&my_server);
 	return 0;

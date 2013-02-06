@@ -63,6 +63,9 @@ struct jrpc_connection {
 	int debug_level;
 };
 
+void add_signal(struct jrpc_server *server, int signo,
+		struct sigaction *action);
+
 int jrpc_server_init(struct jrpc_server *server, int port_number);
 
 int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
