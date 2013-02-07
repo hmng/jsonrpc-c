@@ -18,6 +18,9 @@ struct jrpc_server my_server;
 
 void handle_kill_signal() {
 	jrpc_server_stop(&my_server);
+	signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
+	signal(SIGHUP, SIG_DFL);
 }
 
 cJSON * say_hello(jrpc_context * ctx, cJSON * params, cJSON *id) {
