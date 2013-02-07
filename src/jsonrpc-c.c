@@ -18,7 +18,14 @@
 
 #include "jsonrpc-c.h"
 
-struct ev_loop *loop;
+static int __jrpc_server_start(struct jrpc_server *server);
+
+void add_signal(struct jrpc_server *server, int signo,
+		struct sigaction *action) {
+	ev_signal *s = malloc(sizeof(*s));
+	ev_signal_init(s, action->sa_handler, signo);
+	ev_signal_start(server->loop, s);
+}
 
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa) {
@@ -237,8 +244,7 @@ static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 
 int jrpc_server_init(struct jrpc_server *server, int port_number) {
-    loop = EV_DEFAULT;
-    return jrpc_server_init_with_ev_loop(server, port_number, loop);
+    return jrpc_server_init_with_ev_loop(server, port_number, EV_DEFAULT);
 }
 
 int jrpc_server_init_with_ev_loop(struct jrpc_server *server, 
@@ -316,7 +322,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 	return 0;
 }
 
-void jrpc_server_run(struct jrpc_server *server){
+void jrpc_server_run(struct jrpc_server *server) {
 	ev_run(server->loop, 0);
 }
 
@@ -325,7 +331,7 @@ int jrpc_server_stop(struct jrpc_server *server) {
 	return 0;
 }
 
-void jrpc_server_destroy(struct jrpc_server *server){
+void jrpc_server_destroy(struct jrpc_server *server) {
 	/* Don't destroy server */
 	int i;
 	for (i = 0; i < server->procedure_count; i++){
@@ -334,7 +340,7 @@ void jrpc_server_destroy(struct jrpc_server *server){
 	free(server->procedures);
 }
 
-static void jrpc_procedure_destroy(struct jrpc_procedure *procedure){
+static void jrpc_procedure_destroy(struct jrpc_procedure *procedure) {
 	if (procedure->name){
 		free(procedure->name);
 		procedure->name = NULL;
