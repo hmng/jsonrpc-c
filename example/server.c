@@ -35,6 +35,8 @@ cJSON * exit_server(jrpc_context * ctx, cJSON * params, cJSON *id) {
 int main(void) {
 	struct sigaction action;
 
+	//setenv("JRPC_DEBUG", "1", 1); /* uncomment to active debug */
+
 	jrpc_server_init(&my_server, PORT);
 	jrpc_register_procedure(&my_server.procedure_list, say_hello, "sayHello", NULL);
 	jrpc_register_procedure(&my_server.procedure_list, exit_server, "exit", NULL);
@@ -46,6 +48,9 @@ int main(void) {
 	add_signal(&my_server, SIGHUP, &action);
 
 	jrpc_server_run(&my_server);
+
 	jrpc_server_destroy(&my_server);
+	if (my_server.debug_level)
+		printf("close jrpc-server\n");
 	return 0;
 }
