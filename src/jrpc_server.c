@@ -141,6 +141,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 
 	cJSON *root;
 	char *end_ptr;
+	char *err = "Parse error. Invalid JSON was received by the server.";
 	conn->pos += bytes_read;
 	if ((root = cJSON_Parse_Stream(conn->buffer, &end_ptr)) == NULL) {
 		// did we parse the all buffer? If so, just wait for more.
@@ -150,9 +151,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 				printf("INVALID JSON Received:\n---\n%s\n---\n",
 						conn->buffer);
 			}
-			send_error(conn, JRPC_PARSE_ERROR,
-					strdup("Parse error. Invalid JSON was received by the server."),
-					NULL);
+			send_error(conn, JRPC_PARSE_ERROR, strdup(err), NULL);
 			return close_connection(loop, w);
 		}
 		/* do nothing */
