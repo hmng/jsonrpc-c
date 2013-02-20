@@ -10,11 +10,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
-#include "jsonrpc-c.h"
+#include "jrpc_server.h"
 
 #define PORT 1234  // the port users will be connecting to
 
-struct jrpc_server my_server;
+jrpc_server_t my_server;
 
 void handle_kill_signal() {
 	jrpc_server_stop(&my_server);
@@ -36,8 +36,8 @@ int main(void) {
 	struct sigaction action;
 
 	jrpc_server_init(&my_server, PORT);
-	jrpc_register_procedure(&my_server, say_hello, "sayHello", NULL );
-	jrpc_register_procedure(&my_server, exit_server, "exit", NULL );
+	jrpc_register_procedure(&my_server.procedure_list, say_hello, "sayHello", NULL);
+	jrpc_register_procedure(&my_server.procedure_list, exit_server, "exit", NULL);
 
 	// Add signal handler to terminate server
 	action.sa_handler = handle_kill_signal;

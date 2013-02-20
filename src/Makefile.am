@@ -8,7 +8,7 @@ lib_LTLIBRARIES = libjsonrpcc.la
 # Build information for each library
 
 # Sources for jsonrpcc
-libjsonrpcc_la_SOURCES = cJSON.c jsonrpc-c.c
+libjsonrpcc_la_SOURCES = cJSON.c jsonrpc-c.c jrpc_server.c
 
 # Linker options libTestProgram
 libjsonrpcc_la_LDFLAGS = 

@@ -9,13 +9,12 @@
 #define JSONRPCC_H_
 
 #include "cJSON.h"
-#include <ev.h>
 
 /*
  *
  * http://www.jsonrpc.org/specification
  *
- * code	message	meaning
+ * code		message		meaning
  * -32700	Parse error	Invalid JSON was received by the server.
  * An error occurred on the server while parsing the JSON text.
  * -32600	Invalid Request	The JSON sent is not a valid Request object.
@@ -34,54 +33,43 @@
 typedef struct {
 	void *data;
 	int error_code;
-	char * error_message;
+	char *error_message;
+	cJSON *result;
 } jrpc_context;
 
-typedef cJSON* (*jrpc_function)(jrpc_context *context, cJSON *params, cJSON* id);
+typedef cJSON* (*jrpc_function)(jrpc_context *context, cJSON *params, cJSON *id);
 
-struct jrpc_procedure {
-	char * name;
+typedef struct {
+	char *name;
 	jrpc_function function;
 	void *data;
-};
+} jrpc_procedure;
 
-struct jrpc_server {
-	int port_number;
-	struct ev_loop *loop;
-	ev_io listen_watcher;
-	int procedure_count;
-	struct jrpc_procedure *procedures;
-	int debug_level;
-};
+typedef struct {
+	char *method;
+	cJSON *params;
+	cJSON *id;
+} jrpc_request;
 
-struct jrpc_connection {
-	struct ev_io io;
-	int fd;
-	int pos;
-	unsigned int buffer_size;
-	char * buffer;
-	int debug_level;
-};
+typedef struct {
+	jrpc_procedure *procedures;
+	int count;
+} procedure_list_t;
 
-void add_signal(struct jrpc_server *server, int signo,
-		struct sigaction *action);
+cJSON *create_json_error(int code, char* message, cJSON *id);
 
-int jrpc_server_init(struct jrpc_server *server, int port_number);
+cJSON *create_json_result(cJSON *result, cJSON *id);
 
-int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
-		int port_number, struct ev_loop *loop);
+int validate_request(cJSON *root, jrpc_request *request);
 
-void jrpc_server_run(struct jrpc_server *server);
+int find_context(jrpc_context *ctx, procedure_list_t *procedure_list,
+		jrpc_request *request);
 
-int jrpc_server_stop(struct jrpc_server *server);
-
-void jrpc_server_destroy(struct jrpc_server *server);
-
-static void jrpc_procedure_destroy(struct jrpc_procedure *procedure);
-
-int jrpc_register_procedure(struct jrpc_server *server,
+int jrpc_register_procedure(procedure_list_t *procedure_list,
 		jrpc_function function_pointer, char *name, void *data);
 
-int jrpc_deregister_procedure(struct jrpc_server *server, char *name);
+int jrpc_deregister_procedure(procedure_list_t *procedure_list, char *name);
+
+void jrpc_procedures_destroy(procedure_list_t *procedure_list);
 
 #endif
