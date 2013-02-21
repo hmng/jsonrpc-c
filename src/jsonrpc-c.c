@@ -14,17 +14,18 @@
 static void jrpc_procedure_destroy(jrpc_procedure *procedure);
 
 cJSON *create_json_error(int code, char* message, cJSON *id) {
-	cJSON *result_root = cJSON_CreateObject();
+	cJSON *result_root = create_json_result(NULL, id);
 	cJSON *error_root = cJSON_CreateObject();
 	cJSON_AddNumberToObject(error_root, "code", code);
 	cJSON_AddStringToObject(error_root, "message", message);
-	cJSON_AddItemToObject(error_root, "id", id);
 	cJSON_AddItemToObject(result_root, "error", error_root);
 	return result_root;
 }
 
 cJSON *create_json_result(cJSON *result, cJSON *id) {
 	cJSON *result_root = cJSON_CreateObject();
+	cJSON_AddItemToObject(result_root, "jsonrpc",
+			cJSON_CreateString(strdup(JRPC_VERSION)));
 	if (result)
 		cJSON_AddItemToObject(result_root, "result", result);
 	if (id)
@@ -33,8 +34,19 @@ cJSON *create_json_result(cJSON *result, cJSON *id) {
 }
 
 int validate_request(cJSON *root, jrpc_request *request) {
-	/* Return 1 if valid request */
-	cJSON *method, *params, *id;
+	/* Return 1 if valid request
+	 * Return 0 if not following members of Request
+	 * Return -1 if jsonrpc is not good version : JRPC_VERSION
+	 * Return -2 if jsonrpc has invalid params
+	 */
+	cJSON *version, *method, *params, *id;
+
+	version = cJSON_GetObjectItem(root, "jsonrpc");
+	if (version == NULL)
+		return 0;
+	else if (version->type == cJSON_String &&
+				strcmp(version->valuestring, JRPC_VERSION))
+		return -1;
 
 	method = cJSON_GetObjectItem(root, "method");
 	if (method == NULL || method->type != cJSON_String)
@@ -43,26 +55,30 @@ int validate_request(cJSON *root, jrpc_request *request) {
 	params = cJSON_GetObjectItem(root, "params");
 	if (params != NULL && !(params->type == cJSON_Array ||
 				params->type == cJSON_Object))
-		return 0;
+		return -2;
 
 	id = cJSON_GetObjectItem(root, "id");
-	if (id != NULL && !(id->type == cJSON_String || id->type == cJSON_Number))
+	if (id != NULL && !(id->type == cJSON_String || id->type == cJSON_Number
+				|| id->type == cJSON_NULL))
 		return 0;
 
 	/* We have to copy ID because using it on the reply and
 	* deleting the response Object will also delete ID
 	*/
-	if (id != NULL)
+	if (id != NULL) {
 		request->id = (id->type == cJSON_String) ? cJSON_CreateString(
 				id->valuestring) : cJSON_CreateNumber(id->valueint);
-	else
+		request->is_notification = 0;
+	} else {
 		request->id = NULL;
+		request->is_notification = 1;
+	}
 	request->method = method->valuestring;
 	request->params = params;
 	return 1;
 }
 
-int find_context(jrpc_context *ctx, procedure_list_t *procedure_list,
+int exec_context(jrpc_context *ctx, procedure_list_t *procedure_list,
 		jrpc_request *request) {
 	int i = procedure_list->count;
 	while (i--) {

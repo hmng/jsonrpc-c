@@ -27,8 +27,10 @@
 #define JRPC_PARSE_ERROR -32700
 #define JRPC_INVALID_REQUEST -32600
 #define JRPC_METHOD_NOT_FOUND -32601
-#define JRPC_INVALID_PARAMS -32603
-#define JRPC_INTERNAL_ERROR -32693
+#define JRPC_INVALID_PARAMS -32602
+#define JRPC_INTERNAL_ERROR -32603
+
+#define JRPC_VERSION "2.0"
 
 typedef struct {
 	void *data;
@@ -49,6 +51,7 @@ typedef struct {
 	char *method;
 	cJSON *params;
 	cJSON *id;
+	int is_notification;
 } jrpc_request;
 
 typedef struct {
@@ -62,7 +65,7 @@ cJSON *create_json_result(cJSON *result, cJSON *id);
 
 int validate_request(cJSON *root, jrpc_request *request);
 
-int find_context(jrpc_context *ctx, procedure_list_t *procedure_list,
+int exec_context(jrpc_context *ctx, procedure_list_t *procedure_list,
 		jrpc_request *request);
 
 int jrpc_register_procedure(procedure_list_t *procedure_list,

@@ -72,29 +72,48 @@ static int invoke_procedure(jrpc_server_t *server, jrpc_connection_t *conn,
 	ctx.error_message = NULL;
 	ctx.result = NULL;
 	ctx.data = NULL;
-	if (!find_context(&ctx, &server->procedure_list, request)) {
+
+	int context = exec_context(&ctx, &server->procedure_list, request);
+	if (request->is_notification) {
+		if (conn->debug_level)
+			printf("Don't response to notification.\n");
+		return context;
+	}
+
+	if (!context) {
 		return send_error(conn, JRPC_METHOD_NOT_FOUND,
 				strdup("Method not found."), request->id);
-	} else {
-		if (ctx.error_code)
-			return send_error(conn, ctx.error_code,
-					ctx.error_message, request->id);
-		else
-			return send_result(conn, ctx.result, request->id);
 	}
+
+	if (ctx.error_code) {
+		return send_error(conn, ctx.error_code, ctx.error_message, request->id);
+	}
+	return send_result(conn, ctx.result, request->id);
 }
 
 static int eval_request(jrpc_server_t *server, jrpc_connection_t *conn,
 		cJSON *root) {
 	jrpc_request request;
-	if (validate_request(root, &request)) {
+	int validate = validate_request(root, &request);
+	if (validate > 0) {
 		if (server->debug_level)
 			printf("Method Invoked: %s\n", request.method);
 		return invoke_procedure(server, conn, &request);
+	} else if (validate == -1) {
+		char err[100];
+		if (!sprintf(err, "The JSON-RPC-c only support version %s.", JRPC_VERSION)) {
+			perror("sprintf");
+			exit(EXIT_FAILURE);
+		}
+		send_error(conn, JRPC_INVALID_REQUEST, strdup(err), cJSON_CreateNull());
+		return -1;
+	} else if (validate == -2) {
+		char *err = "The JSON sent has invalid params. Need Object or Array.";
+		send_error(conn, JRPC_INVALID_PARAMS, strdup(err), cJSON_CreateNull());
 	}
 	send_error(conn, JRPC_INVALID_REQUEST,
 			strdup("The JSON sent is not a valid Request object."),
-			NULL);
+			cJSON_CreateNull());
 	return -1;
 }
 
@@ -139,33 +158,38 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		return close_connection(loop, w);
 	}
 
-	cJSON *root;
 	char *end_ptr;
-	char *err = "Parse error. Invalid JSON was received by the server.";
+	char *err_msg = "Parse error. Invalid JSON was received by the server.";
 	conn->pos += bytes_read;
-	if ((root = cJSON_Parse_Stream(conn->buffer, &end_ptr)) == NULL) {
-		// did we parse the all buffer? If so, just wait for more.
-		// else there was an error before the buffer's end
+	cJSON *root = cJSON_Parse_Stream(conn->buffer, &end_ptr);
+
+	if (root == NULL) {
+		/* did we parse the all buffer? If so, just wait for more.
+		* else there was an error before the buffer's end
+		*/
 		if (cJSON_GetErrorPtr() != (conn->buffer + conn->pos)) {
 			if (server->debug_level) {
-				printf("INVALID JSON Received:\n---\n%s\n---\n",
-						conn->buffer);
+				printf("INVALID JSON Received:\n---\n%s\n---\nClose fd %d\n",
+						conn->buffer, fd);
 			}
-			send_error(conn, JRPC_PARSE_ERROR, strdup(err), NULL);
+			send_error(conn, JRPC_PARSE_ERROR, strdup(err_msg), NULL);
 			return close_connection(loop, w);
 		}
-		/* do nothing */
+		/* receive nothing */
 		return;
 	}
-
 	if (server->debug_level) {
-		char *str_result = cJSON_Print(root);
-		printf("Valid JSON Received:\n%s\n", str_result);
-		free(str_result);
+		err_msg = cJSON_Print(root);
+		printf("Valid JSON Received:\n%s\n", err_msg);
+		free(err_msg);
 	}
 
 	if (root->type == cJSON_Object) {
 		eval_request(server, conn, root);
+	} else {
+		send_error(conn, JRPC_INVALID_REQUEST,
+				strdup("The JSON sent is not a valid Request object."),
+				NULL);
 	}
 	//shift processed request, discarding it
 	memmove(conn->buffer, end_ptr, strlen(end_ptr) + 2);
@@ -173,8 +197,8 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	conn->pos = strlen(end_ptr);
 	memset(conn->buffer + conn->pos, 0,
 			conn->buffer_size - conn->pos - 1);
-
-	cJSON_Delete(root);
+	if (root)
+		cJSON_Delete(root);
 }
 
 static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {

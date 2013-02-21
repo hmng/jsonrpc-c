@@ -23,11 +23,21 @@ void handle_kill_signal() {
 	signal(SIGHUP, SIG_DFL);
 }
 
-cJSON * say_hello(jrpc_context * ctx, cJSON * params, cJSON *id) {
+cJSON * say_hello(jrpc_context *ctx, cJSON *params, cJSON *id) {
+	char hello_name[100];
+	cJSON *name = NULL;
+	if (params && params->type == cJSON_Array) {
+		name = cJSON_GetArrayItem(params, 0);
+	}
+	if (name) {
+		if (!sprintf(hello_name, "Hello %s!", name->valuestring))
+				perror("sprintf");
+		return cJSON_CreateString(hello_name);
+	}
 	return cJSON_CreateString("Hello!");
 }
 
-cJSON * exit_server(jrpc_context * ctx, cJSON * params, cJSON *id) {
+cJSON * exit_server(jrpc_context *ctx, cJSON *params, cJSON *id) {
 	jrpc_server_stop(&my_server);
 	return cJSON_CreateString("Bye!");
 }
