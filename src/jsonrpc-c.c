@@ -29,7 +29,12 @@ cJSON *create_json_result(cJSON *result, cJSON *id) {
 	if (result)
 		cJSON_AddItemToObject(result_root, "result", result);
 	if (id)
-		cJSON_AddItemToObject(result_root, "id", id);
+		if (id->type == cJSON_Number && !id->valueint) {
+			cJSON_AddItemToObject(result_root, "id", cJSON_CreateNull());
+			cJSON_Delete(id);
+		} else {
+			cJSON_AddItemToObject(result_root, "id", id);
+		}
 	return result_root;
 }
 
