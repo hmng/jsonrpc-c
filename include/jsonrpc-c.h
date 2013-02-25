@@ -37,42 +37,36 @@ typedef struct {
 	int error_code;
 	char *error_message;
 	cJSON *result;
-} jrpc_context;
+} jrpc_context_t;
 
-typedef cJSON* (*jrpc_function)(jrpc_context *context, cJSON *params, cJSON *id);
+typedef cJSON* (*jrpc_function)(jrpc_context_t *context, cJSON *params, cJSON *id);
 
 typedef struct {
 	char *name;
 	jrpc_function function;
 	void *data;
-} jrpc_procedure;
+} jrpc_procedure_t;
 
 typedef struct {
 	char *method;
 	cJSON *params;
 	cJSON *id;
 	int is_notification;
-} jrpc_request;
+	int fd; // file descriptor
+	int debug_level;
+} jrpc_request_t;
 
 typedef struct {
-	jrpc_procedure *procedures;
+	jrpc_procedure_t *procedures;
 	int count;
 } procedure_list_t;
 
-cJSON *create_json_error(int code, char* message, cJSON *id);
-
-cJSON *create_json_result(cJSON *result, cJSON *id);
-
-int validate_request(cJSON *root, jrpc_request *request);
-
-int exec_context(jrpc_context *ctx, procedure_list_t *procedure_list,
-		jrpc_request *request);
-
+int send_error(jrpc_request_t *request, int code, char *message);
+int send_result(jrpc_request_t *request, cJSON *result);
+int eval_request(jrpc_request_t *request, cJSON *root, procedure_list_t *procedure_list);
 int jrpc_register_procedure(procedure_list_t *procedure_list,
 		jrpc_function function_pointer, char *name, void *data);
-
 int jrpc_deregister_procedure(procedure_list_t *procedure_list, char *name);
-
 void jrpc_procedures_destroy(procedure_list_t *procedure_list);
 
 #endif

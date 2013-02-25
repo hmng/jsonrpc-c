@@ -18,7 +18,7 @@
 
 #include "jrpc_server.h"
 
-static int __jrpc_server_start(jrpc_server_t *server);
+static int jrpc_server_start(jrpc_server_t *server);
 
 void add_signal(jrpc_server_t *server, int signo, struct sigaction *action) {
 	ev_signal *s = malloc(sizeof(*s));
@@ -34,89 +34,6 @@ static void *get_in_addr(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6*) sa)->sin6_addr);
 }
 
-static int send_response(jrpc_connection_t *conn, char *response) {
-	int fd = conn->fd;
-	if (conn->debug_level)
-		printf("JSON Response:\n%s\n", response);
-	write(fd, response, strlen(response));
-	write(fd, "\n", 1);
-	return 0;
-}
-
-static int send_error(jrpc_connection_t *conn, int code, char *message,
-		cJSON *id) {
-	int return_value = 0;
-	cJSON *result_root = create_json_error(code, message, id);
-	char *str_result = cJSON_Print(result_root);
-	return_value = send_response(conn, str_result);
-	free(str_result);
-	cJSON_Delete(result_root);
-	free(message);
-	return return_value;
-}
-
-static int send_result(jrpc_connection_t *conn, cJSON *result, cJSON *id) {
-	int return_value = 0;
-	cJSON *result_root = create_json_result(result, id);
-	char *str_result = cJSON_Print(result_root);
-	return_value = send_response(conn, str_result);
-	free(str_result);
-	cJSON_Delete(result_root);
-	return return_value;
-}
-
-static int invoke_procedure(jrpc_server_t *server, jrpc_connection_t *conn,
-		jrpc_request *request) {
-	jrpc_context ctx;
-	ctx.error_code = 0;
-	ctx.error_message = NULL;
-	ctx.result = NULL;
-	ctx.data = NULL;
-
-	int context = exec_context(&ctx, &server->procedure_list, request);
-	if (request->is_notification) {
-		if (conn->debug_level)
-			printf("Don't response to notification.\n");
-		return context;
-	}
-
-	if (!context) {
-		return send_error(conn, JRPC_METHOD_NOT_FOUND,
-				strdup("Method not found."), request->id);
-	}
-
-	if (ctx.error_code) {
-		return send_error(conn, ctx.error_code, ctx.error_message, request->id);
-	}
-	return send_result(conn, ctx.result, request->id);
-}
-
-static int eval_request(jrpc_server_t *server, jrpc_connection_t *conn,
-		cJSON *root) {
-	jrpc_request request;
-	int validate = validate_request(root, &request);
-	if (validate > 0) {
-		if (server->debug_level)
-			printf("Method Invoked: %s\n", request.method);
-		return invoke_procedure(server, conn, &request);
-	} else if (validate == -1) {
-		char err[100];
-		if (!sprintf(err, "The JSON-RPC-c only support version %s.", JRPC_VERSION)) {
-			perror("sprintf");
-			exit(EXIT_FAILURE);
-		}
-		send_error(conn, JRPC_INVALID_REQUEST, strdup(err), cJSON_CreateNull());
-		return -1;
-	} else if (validate == -2) {
-		char *err = "The JSON sent has invalid params. Need Object or Array.";
-		send_error(conn, JRPC_INVALID_PARAMS, strdup(err), cJSON_CreateNull());
-	}
-	send_error(conn, JRPC_INVALID_REQUEST,
-			strdup("The JSON sent is not a valid Request object."),
-			cJSON_CreateNull());
-	return -1;
-}
-
 static void close_connection(struct ev_loop *loop, ev_io *w) {
 	ev_io_stop(loop, w);
 	close(((jrpc_connection_t *) w)->fd);
@@ -126,14 +43,16 @@ static void close_connection(struct ev_loop *loop, ev_io *w) {
 
 static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	jrpc_connection_t *conn;
+	jrpc_request_t request;
 	jrpc_server_t *server = (jrpc_server_t *) w->data;
 	size_t bytes_read = 0;
 	//get our 'subclassed' event watcher
 	conn = (jrpc_connection_t *) w;
-	int fd = conn->fd;
+	int fd = request.fd = conn->fd;
+	request.debug_level = conn->debug_level;
 
 	if (server->debug_level)
-		printf("callback from fd %d\n", fd);
+		printf("callback from fd %d\n", request.fd);
 
 	if (conn->pos == (conn->buffer_size - 1)) {
 		char *new_buffer = realloc(conn->buffer, conn->buffer_size *= 2);
@@ -172,7 +91,8 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 				printf("INVALID JSON Received:\n---\n%s\n---\nClose fd %d\n",
 						conn->buffer, fd);
 			}
-			send_error(conn, JRPC_PARSE_ERROR, strdup(err_msg), NULL);
+			request.id = NULL;
+			send_error(&request, JRPC_PARSE_ERROR, strdup(err_msg));
 			return close_connection(loop, w);
 		}
 		/* receive nothing */
@@ -185,11 +105,11 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 	}
 
 	if (root->type == cJSON_Object) {
-		eval_request(server, conn, root);
+		eval_request(&request, root, &server->procedure_list);
 	} else {
-		send_error(conn, JRPC_INVALID_REQUEST,
-				strdup("The JSON sent is not a valid Request object."),
-				NULL);
+		request.id = NULL;
+		err_msg = "The JSON sent is not a valid Request object.";
+		send_error(&request, JRPC_INVALID_REQUEST, strdup(err_msg));
 	}
 	//shift processed request, discarding it
 	memmove(conn->buffer, end_ptr, strlen(end_ptr) + 2);
@@ -254,10 +174,10 @@ int jrpc_server_init_with_ev_loop(jrpc_server_t *server, int port_number,
 		server->debug_level = strtol(debug_level_env, NULL, 10);
 		printf("JSONRPC-C Debug level %d\n", server->debug_level);
 	}
-	return __jrpc_server_start(server);
+	return jrpc_server_start(server);
 }
 
-static int __jrpc_server_start(jrpc_server_t *server) {
+static int jrpc_server_start(jrpc_server_t *server) {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	int yes = 1;
@@ -329,4 +249,3 @@ int jrpc_server_stop(jrpc_server_t *server) {
 void jrpc_server_destroy(jrpc_server_t *server) {
 	jrpc_procedures_destroy(&server->procedure_list);
 }
-
