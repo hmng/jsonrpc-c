@@ -1,0 +1,6 @@
+pycli.py contains manual test about the specification jsonrpc 2.0.
+http://www.jsonrpc.org/specification
+
+To execute it : python ./pycli.py
+It's a command line, use tab to autocomplete.
+It suggests to active server debug when testing (check debug into server.c)

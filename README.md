@@ -26,10 +26,11 @@ Run `autoreconf -i`  before `./configure` and `make`
 
 Test the example server by running it and typing: 
 
-`echo "{\"method\":\"sayHello\"}" | nc localhost 1234`
+`echo '{"jsonrpc":"2.0", "method":"sayHello", "params":["sam"], "id":null}' | nc localhost 1234`
 
 or
 
+`echo '{"jsonrpc":"2.0", "method":"exit", "id":null}' | nc localhost 1234`
 `echo "{\"method\":\"exit\"}" | nc localhost 1234`
 
 Who?
