@@ -44,8 +44,8 @@ static int send_error(struct jrpc_connection * conn, int code, char* message,
 	cJSON *error_root = cJSON_CreateObject();
 	cJSON_AddNumberToObject(error_root, "code", code);
 	cJSON_AddStringToObject(error_root, "message", message);
-	cJSON_AddItemToObject(error_root, "id", id);
 	cJSON_AddItemToObject(result_root, "error", error_root);
+	cJSON_AddItemToObject(result_root, "id", id);
 	char * str_result = cJSON_Print(result_root);
 	return_value = send_response(conn, str_result);
 	free(str_result);
@@ -316,12 +316,23 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 	return 0;
 }
 
+// Make the code work with both the old (ev_loop/ev_unloop)
+// and new (ev_run/ev_break) versions of libev.
+#ifdef EVUNLOOP_ALL
+  #define EV_RUN ev_loop
+  #define EV_BREAK ev_unloop
+  #define EVBREAK_ALL EVUNLOOP_ALL
+#else
+  #define EV_RUN ev_run
+  #define EV_BREAK ev_break
+#endif
+
 void jrpc_server_run(struct jrpc_server *server){
-	ev_run(server->loop, 0);
+	EV_RUN(server->loop, 0);
 }
 
 int jrpc_server_stop(struct jrpc_server *server) {
-	ev_break(server->loop, EVBREAK_ALL);
+	EV_BREAK(server->loop, EVBREAK_ALL);
 	return 0;
 }
 
