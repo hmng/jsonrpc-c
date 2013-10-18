@@ -259,6 +259,8 @@ int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
 static int __jrpc_server_start(struct jrpc_server *server) {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr_in sockaddr;
+	int len;
 	int yes = 1;
 	int rv;
 	char PORT[6];
@@ -292,6 +294,16 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 			perror("server: bind");
 			continue;
 		}
+
+		len = sizeof(sockaddr);
+		if ( getsockname( sockfd, (struct sockaddr *)&sockaddr, &len ) 
+			== -1 )
+		{
+			close(sockfd);
+			perror("server: getsockname");
+			continue;
+		}
+		server->port_number = ntohs( sockaddr.sin_port );
 
 		break;
 	}
