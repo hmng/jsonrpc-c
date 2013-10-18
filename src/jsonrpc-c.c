@@ -296,9 +296,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 		}
 
 		len = sizeof(sockaddr);
-		if ( getsockname( sockfd, (struct sockaddr *)&sockaddr, &len ) 
-			== -1 )
-		{
+		if (getsockname(sockfd, (struct sockaddr *) &sockaddr, &len) == -1) {
 			close(sockfd);
 			perror("server: getsockname");
 			continue;
