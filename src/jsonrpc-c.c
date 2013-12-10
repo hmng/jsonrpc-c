@@ -163,7 +163,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		return close_connection(loop, w);
 	} else {
 		cJSON *root;
-		char *end_ptr;
+		char *end_ptr = NULL;
 		conn->pos += bytes_read;
 
 		if ((root = cJSON_Parse_Stream(conn->buffer, &end_ptr)) != NULL) {
@@ -187,7 +187,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		} else {
 			// did we parse the all buffer? If so, just wait for more.
 			// else there was an error before the buffer's end
-			if (cJSON_GetErrorPtr() != (conn->buffer + conn->pos)) {
+			if (end_ptr != (conn->buffer + conn->pos)) {
 				if (server->debug_level) {
 					printf("INVALID JSON Received:\n---\n%s\n---\n",
 							conn->buffer);
