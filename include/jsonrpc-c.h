@@ -68,15 +68,11 @@ int jrpc_server_init(struct jrpc_server *server, int port_number);
 int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
         int port_number, struct ev_loop *loop);
 
-static int __jrpc_server_start(struct jrpc_server *server);
-
 void jrpc_server_run(struct jrpc_server *server);
 
 int jrpc_server_stop(struct jrpc_server *server);
 
 void jrpc_server_destroy(struct jrpc_server *server);
-
-static void jrpc_procedure_destroy(struct jrpc_procedure *procedure);
 
 int jrpc_register_procedure(struct jrpc_server *server,
 		jrpc_function function_pointer, char *name, void *data);

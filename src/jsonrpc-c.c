@@ -18,6 +18,9 @@
 
 #include "jsonrpc-c.h"
 
+static int __jrpc_server_start(struct jrpc_server *server);
+static void jrpc_procedure_destroy(struct jrpc_procedure *procedure);
+
 struct ev_loop *loop;
 
 // get sockaddr, IPv4 or IPv6:
