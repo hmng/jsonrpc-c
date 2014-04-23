@@ -58,7 +58,7 @@ struct jrpc_connection {
 	struct ev_io io;
 	int fd;
 	int pos;
-	unsigned int buffer_size;
+	int buffer_size;
 	char * buffer;
 	int debug_level;
 };

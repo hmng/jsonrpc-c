@@ -18,6 +18,8 @@
 
 #include "jsonrpc-c.h"
 
+#define UNUSED(x) (void)(x)
+
 struct ev_loop *loop;
 
 // get sockaddr, IPv4 or IPv6:
@@ -134,9 +136,10 @@ static void close_connection(struct ev_loop *loop, ev_io *w) {
 }
 
 static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
+    UNUSED(revents);
 	struct jrpc_connection *conn;
 	struct jrpc_server *server = (struct jrpc_server *) w->data;
-	size_t bytes_read = 0;
+	int bytes_read = 0;
 	//get our 'subclassed' event watcher
 	conn = (struct jrpc_connection *) w;
 	int fd = conn->fd;
@@ -204,6 +207,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 
 static void accept_cb(struct ev_loop *loop, ev_io *w, int revents) {
+    UNUSED(revents);
 	char s[INET6_ADDRSTRLEN];
 	struct jrpc_connection *connection_watcher;
 	connection_watcher = malloc(sizeof(struct jrpc_connection));
@@ -296,7 +300,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 		}
 
 		len = sizeof(sockaddr);
-		if (getsockname(sockfd, (struct sockaddr *) &sockaddr, &len) == -1) {
+		if (getsockname(sockfd, (struct sockaddr *) &sockaddr, (socklen_t *)&len) == -1) {
 			close(sockfd);
 			perror("server: getsockname");
 			continue;
