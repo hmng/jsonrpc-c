@@ -48,7 +48,7 @@ struct jrpc_procedure {
 struct jrpc_server {
 	int port_number;
 	struct ev_loop *loop;
-	ev_io listen_watcher;
+	ev_io listen_watcher[2];
 	int procedure_count;
 	struct jrpc_procedure *procedures;
 	int debug_level;
