@@ -18,6 +18,9 @@
 
 #include "jsonrpc-c.h"
 
+static int __jrpc_server_start(struct jrpc_server *server);
+static void jrpc_procedure_destroy(struct jrpc_procedure *procedure);
+
 struct ev_loop *loop;
 
 // get sockaddr, IPv4 or IPv6:
@@ -257,13 +260,14 @@ int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
 }
 
 static int __jrpc_server_start(struct jrpc_server *server) {
-	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in sockaddr;
 	int len;
 	int yes = 1;
 	int rv;
 	char PORT[6];
+	int watcher_i = 0; // current listen_watcher
+
 	sprintf(PORT, "%d", server->port_number);
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -275,8 +279,13 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 		return 1;
 	}
 
-// loop through all the results and bind to the first we can
+	// loop through all the results and bind to the first two
+	// this ensures that we bind to the ANY address with IPv4 and IPv6
+	// if IPv6 is available
+
 	for (p = servinfo; p != NULL; p = p->ai_next) {
+		int sockfd;
+
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol))
 				== -1) {
 			perror("server: socket");
@@ -288,6 +297,15 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 			perror("setsockopt");
 			exit(1);
 		}
+
+#ifdef IPV6_V6ONLY
+		if (p->ai_family == AF_INET6 &&
+		    setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(int))
+				== -1) {
+			perror("setsockopt");
+			exit(1);
+		}
+#endif
 
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
@@ -303,26 +321,30 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 		}
 		server->port_number = ntohs( sockaddr.sin_port );
 
-		break;
+		if (listen(sockfd, 5) == -1) {
+			perror("listen");
+			exit(1);
+		}
+
+		ev_io_init(server->listen_watcher + watcher_i, accept_cb, sockfd, EV_READ);
+		server->listen_watcher[watcher_i].data = server;
+		ev_io_start(server->loop, server->listen_watcher + watcher_i);
+
+		watcher_i++;
+		if (watcher_i >= sizeof(server->listen_watcher)/sizeof(server->listen_watcher[0]))
+			break;
 	}
 
-	if (p == NULL) {
+	if (watcher_i == 0) {
 		fprintf(stderr, "server: failed to bind\n");
 		return 2;
 	}
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	if (listen(sockfd, 5) == -1) {
-		perror("listen");
-		exit(1);
-	}
 	if (server->debug_level)
 		printf("server: waiting for connections...\n");
 
-	ev_io_init(&server->listen_watcher, accept_cb, sockfd, EV_READ);
-	server->listen_watcher.data = server;
-	ev_io_start(server->loop, &server->listen_watcher);
 	return 0;
 }
 
@@ -342,6 +364,7 @@ void jrpc_server_run(struct jrpc_server *server){
 }
 
 int jrpc_server_stop(struct jrpc_server *server) {
+	// FIXME: perhaps it would be better to stop all watchers here?
 	EV_BREAK(server->loop, EVBREAK_ALL);
 	return 0;
 }
