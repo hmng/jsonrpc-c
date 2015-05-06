@@ -263,7 +263,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in sockaddr;
-	int len;
+	unsigned int len;
 	int yes = 1;
 	int rv;
 	char PORT[6];
