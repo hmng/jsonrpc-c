@@ -27,6 +27,13 @@ cJSON * say_hello(jrpc_context * ctx, cJSON * params, cJSON *id) {
 	return cJSON_CreateString("Hello!");
 }
 
+
+cJSON * add(jrpc_context * ctx, cJSON * params, cJSON *id) {
+	cJSON * a = cJSON_GetArrayItem(params,0);
+	cJSON * b = cJSON_GetArrayItem(params,1);
+	return cJSON_CreateNumber(a->valueint + b->valueint);
+}
+
 cJSON * exit_server(jrpc_context * ctx, cJSON * params, cJSON *id) {
 	jrpc_server_stop(&my_server);
 	return cJSON_CreateString("Bye!");
@@ -35,6 +42,7 @@ cJSON * exit_server(jrpc_context * ctx, cJSON * params, cJSON *id) {
 int main(void) {
 	jrpc_server_init(&my_server, PORT);
 	jrpc_register_procedure(&my_server, say_hello, "sayHello", NULL );
+	jrpc_register_procedure(&my_server, add, "add", NULL );
 	jrpc_register_procedure(&my_server, exit_server, "exit", NULL );
 	jrpc_server_run(&my_server);
 	jrpc_server_destroy(&my_server);

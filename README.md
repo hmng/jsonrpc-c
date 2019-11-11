@@ -30,6 +30,10 @@ Test the example server by running it and typing:
 
 or
 
+`echo "{\"method\": \"add\", \"params\": [3,4], \"id\": \"SOME_IDENTIFIER\" }" | nc  localhost 1234`
+
+or
+
 `echo "{\"method\":\"exit\"}" | nc localhost 1234`
 
 Who?
