@@ -17,7 +17,7 @@ and saw no need for HTTP.
 
 How?
 ----
-It depends on libev (was already used on the embedded app) and includes cJSON (with a small patch on my fork).
+It depends on libev http://software.schmorp.de/pkg/libev.html (was already used on the embedded app) and includes cJSON (with a small patch on my fork).
 No further dependencies.
 
 ### Testing
