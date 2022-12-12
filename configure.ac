@@ -7,6 +7,7 @@ LT_INIT
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC
 AM_PROG_CC_C_O
+AC_CONFIG_MACRO_DIRS([m4])
 
 #AC_CHECK_LIB([ev], [ev_io_init],[], [AC_MSG_ERROR([libev was not found])])
 #AC_CHECK_LIB([ev],[ev_sleep],[],[AC_MSG_ERROR([libev was not found])])
@@ -17,7 +18,7 @@ AC_ARG_WITH([libev],
     [AS_HELP_STRING([--with-libev@<:@=PATH@:>@],[Search for libev in PATH/include and PATH/lib])],
     [WITH_LIBEV=$withval],[WITH_LIBEV=yes])
 
-LIBEV_CFLAGS=""
+LIBEV_CFLAGS="-lm"
 LIBEV_LIBS=""
 
 PKG_CHECK_MODULES([LIBEV], [libev], [], [
@@ -41,6 +42,11 @@ PKG_CHECK_MODULES([LIBEV], [libev], [], [
 
 AC_SUBST([LIBEV_CFLAGS])
 AC_SUBST([LIBEV_LIBS])
+
+AC_MSG_RESULT([
+   LIBEV_CFLAGS: ${LIBEV_CFLAGS}
+   LIBEV_LIBS: ${LIBEV_LIBS}
+])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
