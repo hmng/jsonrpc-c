@@ -55,3 +55,4 @@ stamp-h1
 *.libs
 example/server
 
+/Build (GNU)/
