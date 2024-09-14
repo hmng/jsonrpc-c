@@ -117,7 +117,7 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 }
 
 /* This is a safeguard to prevent copy-pasters from using incompatible C and header files */
-#if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 15)
+#if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 18)
     #error cJSON.h and cJSON.c have different versions. Make sure that both have the same.
 #endif
 
@@ -263,10 +263,12 @@ CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)
         if (!(item->type & cJSON_IsReference) && (item->valuestring != NULL))
         {
             global_hooks.deallocate(item->valuestring);
+            item->valuestring = NULL;
         }
         if (!(item->type & cJSON_StringIsConst) && (item->string != NULL))
         {
             global_hooks.deallocate(item->string);
+            item->string = NULL;
         }
         global_hooks.deallocate(item);
         item = next;
@@ -397,11 +399,17 @@ CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number)
     return object->valuedouble = number;
 }
 
+/* Note: when passing a NULL valuestring, cJSON_SetValuestring treats this as an error and return NULL */
 CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
 {
     char *copy = NULL;
     /* if object's type is not cJSON_String or is cJSON_IsReference, it should not set valuestring */
-    if (!(object->type & cJSON_String) || (object->type & cJSON_IsReference))
+    if ((object == NULL) || !(object->type & cJSON_String) || (object->type & cJSON_IsReference))
+    {
+        return NULL;
+    }
+    /* return NULL if the object is corrupted or valuestring is NULL */
+    if (object->valuestring == NULL || valuestring == NULL)
     {
         return NULL;
     }
@@ -888,6 +896,7 @@ fail:
     if (output != NULL)
     {
         input_buffer->hooks.deallocate(output);
+        output = NULL;
     }
 
     if (input_pointer != NULL)
@@ -1230,6 +1239,7 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
 
         /* free the buffer */
         hooks->deallocate(buffer->buffer);
+        buffer->buffer = NULL;
     }
 
     return printed;
@@ -1238,11 +1248,13 @@ fail:
     if (buffer->buffer != NULL)
     {
         hooks->deallocate(buffer->buffer);
+        buffer->buffer = NULL;
     }
 
     if (printed != NULL)
     {
         hooks->deallocate(printed);
+        printed = NULL;
     }
 
     return NULL;
@@ -1283,6 +1295,7 @@ CJSON_PUBLIC(char *) cJSON_PrintBuffered(const cJSON *item, int prebuffer, cJSON
     if (!print_value(item, &p))
     {
         global_hooks.deallocate(p.buffer);
+        p.buffer = NULL;
         return NULL;
     }
 
@@ -1652,6 +1665,11 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
             current_item->next = new_item;
             new_item->prev = current_item;
             current_item = new_item;
+        }
+
+        if (cannot_access_at_index(input_buffer, 1))
+        {
+            goto fail; /* nothing comes after the comma */
         }
 
         /* parse the name of the child */
@@ -2264,7 +2282,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON 
 {
     cJSON *after_inserted = NULL;
 
-    if (which < 0)
+    if (which < 0 || newitem == NULL)
     {
         return false;
     }
@@ -2273,6 +2291,11 @@ CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON 
     if (after_inserted == NULL)
     {
         return add_item_to_array(array, newitem);
+    }
+
+    if (after_inserted != array->child && after_inserted->prev == NULL) {
+        /* return false if after_inserted is a corrupted array item */
+        return false;
     }
 
     newitem->next = after_inserted;
@@ -2291,7 +2314,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON 
 
 CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemViaPointer(cJSON * const parent, cJSON * const item, cJSON * replacement)
 {
-    if ((parent == NULL) || (replacement == NULL) || (item == NULL))
+    if ((parent == NULL) || (parent->child == NULL) || (replacement == NULL) || (item == NULL))
     {
         return false;
     }
@@ -3116,4 +3139,5 @@ CJSON_PUBLIC(void *) cJSON_malloc(size_t size)
 CJSON_PUBLIC(void) cJSON_free(void *object)
 {
     global_hooks.deallocate(object);
+    object = NULL;
 }
