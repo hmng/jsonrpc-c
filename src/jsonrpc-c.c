@@ -49,11 +49,12 @@ static void *get_in_addr(struct sockaddr *sa) {
 }
 
 static int send_response(struct jrpc_connection * conn, char *response) {
+	ssize_t unused;
 	int fd = conn->fd;
 	if (conn->debug_level > 1)
 		printf("JSON Response:\n%s\n", response);
-	write(fd, response, strlen(response));
-	write(fd, "\n", 1);
+	unused = write(fd, response, strlen(response));
+	unused = write(fd, "\n", 1);
 	return 0;
 }
 
