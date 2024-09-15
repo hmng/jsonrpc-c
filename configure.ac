@@ -9,6 +9,8 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_CONFIG_MACRO_DIRS([m4])
 
+AC_HEADER_STDBOOL
+
 #AC_CHECK_LIB([ev], [ev_io_init],[], [AC_MSG_ERROR([libev was not found])])
 #AC_CHECK_LIB([ev],[ev_sleep],[],[AC_MSG_ERROR([libev was not found])])
 
