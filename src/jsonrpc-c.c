@@ -16,6 +16,23 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+#include "config.h"
+#ifdef HAVE_STDBOOL_H
+# include <stdbool.h>
+#else
+# ifndef HAVE__BOOL
+#  ifdef __cplusplus
+typedef bool _Bool;
+#  else
+#   define _Bool signed char
+#  endif
+# endif
+# define bool _Bool
+# define false 0
+# define true 1
+# define __bool_true_false_are_defined 1
+#endif
+
 #include "jsonrpc-c.h"
 
 static int __jrpc_server_start(struct jrpc_server *server);
@@ -169,7 +186,7 @@ static void connection_cb(struct ev_loop *loop, ev_io *w, int revents) {
 		const char *end_ptr = NULL;
 		conn->pos += bytes_read;
 
-		if ((root = cJSON_ParseWithOpts(conn->buffer, &end_ptr, cJSON_False)) != NULL) {
+		if ((root = cJSON_ParseWithOpts(conn->buffer, &end_ptr, false)) != NULL) {
 			if (server->debug_level > 1) {
 				char * str_result = cJSON_Print(root);
 				printf("Valid JSON Received:\n%s\n", str_result);
@@ -244,7 +261,7 @@ int jrpc_server_init(struct jrpc_server *server, int port_number) {
     return jrpc_server_init_with_ev_loop(server, port_number, loop);
 }
 
-int jrpc_server_init_with_ev_loop(struct jrpc_server *server, 
+int jrpc_server_init_with_ev_loop(struct jrpc_server *server,
         int port_number, struct ev_loop *loop) {
 	memset(server, 0, sizeof(struct jrpc_server));
 	server->loop = loop;

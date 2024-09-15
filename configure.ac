@@ -1,4 +1,4 @@
-AC_INIT([jsonrpc-c], [0.1], [hmng@farol.pt])
+AC_INIT([jsonrpc-c], [0.1], [jsonrpc-c@farol.pt])
 AC_CONFIG_SRCDIR([src/jsonrpc-c.c])
 
 m4_pattern_allow([AM_PROG_AR])
@@ -8,6 +8,8 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_CONFIG_MACRO_DIRS([m4])
+
+AC_HEADER_STDBOOL
 
 #AC_CHECK_LIB([ev], [ev_io_init],[], [AC_MSG_ERROR([libev was not found])])
 #AC_CHECK_LIB([ev],[ev_sleep],[],[AC_MSG_ERROR([libev was not found])])
