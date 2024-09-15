@@ -1,4 +1,4 @@
-AC_INIT([jsonrpc-c], [0.1], [hmng@farol.pt])
+AC_INIT([jsonrpc-c], [0.1], [jsonrpc-c@farol.pt])
 AC_CONFIG_SRCDIR([src/jsonrpc-c.c])
 
 m4_pattern_allow([AM_PROG_AR])
