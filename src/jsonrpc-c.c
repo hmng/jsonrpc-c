@@ -307,7 +307,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
 				== -1) {
 			perror("setsockopt");
-			exit(1);
+			return -1;
 		}
 
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
@@ -336,7 +336,7 @@ static int __jrpc_server_start(struct jrpc_server *server) {
 
 	if (listen(sockfd, 5) == -1) {
 		perror("listen");
-		exit(1);
+		return -1;
 	}
 	if (server->debug_level)
 		printf("server: waiting for connections...\n");
