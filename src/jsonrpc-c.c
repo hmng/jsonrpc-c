@@ -112,8 +112,16 @@ static int invoke_procedure(struct jrpc_server *server,
 	else {
 		if (ctx.error_code)
 			return send_error(conn, ctx.error_code, ctx.error_message, id);
-		else
-			return send_result(conn, returned, id);
+		else {
+			// notifications have no reply
+			// the standard indicates that notifications are sent without "id"
+			// but we leave the decision for clients; by returning NULL we skip the reply
+			if (returned != NULL) {
+				return send_result(conn, returned, id);
+			} else {
+				return 0;
+			}
+		}
 	}
 }
 
