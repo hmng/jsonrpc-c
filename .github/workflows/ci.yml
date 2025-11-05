@@ -1,0 +1,24 @@
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-macOS:
+    name: build (macOS)
+    runs-on: macos-latest
+    steps:
+        - uses: actions/checkout@v2
+        - run: |
+            brew install libev
+            cmake --debug-output -Bbuild -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release
+  build-linux:
+    name: build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v2
+        - run: |
+            sudo apt-get install libev-dev
+            cmake --debug-output -Bbuild -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release
